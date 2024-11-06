@@ -115,5 +115,19 @@ class CompleteOrder:
         self.driver = driver
 
     def complete(self):
-        complete = self.driver.find_element(By.CLASS_NAME, 'complete-header')
+        complete = self.driver.find_element(By.CLASS_NAME, "complete-header")
         return complete.text
+
+
+class Menu:
+    def __init__(self, driver):
+        self.driver = driver
+
+    def btn_menu(self):
+        menu = self.driver.find_element(By.ID, "react-burger-menu-btn")
+        menu.click()
+
+    def logout(self):
+        logout = WebDriverWait(self.driver, 10).until(
+            EC.element_to_be_clickable((By.ID, "logout_sidebar_link")))
+        logout.click()
