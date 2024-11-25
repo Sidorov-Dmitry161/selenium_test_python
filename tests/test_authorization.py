@@ -7,10 +7,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from pages.locators_page import LoginPage, Menu
 
 password_all = "secret_sauce"
-standard_user = "standard_user"
-locked_out_user = "locked_out_user"
-problem_user = "problem_user"
-performance_glitch_user = "performance_glitch_user"
+users = [
+    ("standard_user", password_all, True),
+    ("locked_out_user", password_all, False),
+    ("problem_user", password_all, True),
+    ("performance_glitch_user", password_all, True)
+]
 
 
 @pytest.mark.usefixtures("setup")
@@ -21,57 +23,35 @@ class TestAuthorization:
         login_page.username_input(login)
         login_page.password_input(password)
         login_page.login_button()
-        logger.info("Мы ввели логин и пароль")
+        logger.info(f"Логин и пароль введены для пользователя: {login}")
 
-    def test_login_standard_user(self):
-        """Тест для стандартного пользователя"""
-        self.login(standard_user, password_all)
+    def verify_successful_login(self):
+        """Проверка успешного входа на страницу продуктов"""
         assert self.driver.find_element(By.XPATH, "//span[@class='title']").text == "Products", "Логин не удался"
         logger.info("Нужная страница открылась")
 
         menu = Menu(self.driver)
         menu.btn_menu()
-        logger.info("Мы нажали на меню")
+        logger.info("Меню нажато")
 
         WebDriverWait(self.driver, 10).until(
             EC.element_to_be_clickable((By.ID, "logout_sidebar_link"))
         )
-        logger.info(f"Вход успешен для пользователя: {standard_user}")
+        logger.info("Вход успешен, пользователь авторизован.")
 
-    def test_login_locked_out_user(self):
-        """Тест для заблокированного пользователя"""
-        self.login(locked_out_user, password_all)
+    def verify_error_message(self, expected_message):
+        """Проверка появления сообщения об ошибке"""
         error_message = WebDriverWait(self.driver, 10).until(
             EC.visibility_of_element_located((By.XPATH, "//h3[@data-test='error']"))
         )
-        assert "Epic sadface: Sorry, this user has been locked out." in error_message.text
+        assert expected_message in error_message.text, f"Ошибка: {error_message.text}"
 
-    def test_login_problem_user(self):
-        """Тест для проблемного пользователя"""
-        self.login(problem_user, password_all)
-        assert self.driver.find_element(By.XPATH, "//span[@class='title']").text == "Products", "Логин не удался"
-        logger.info("Нужная страница открылась")
-        menu = Menu(self.driver)
-        menu.btn_menu()
-        logger.info("Мы нажали на меню")
+    @pytest.mark.parametrize("username, password, is_successful", users)
+    def test_login(self, username, password, is_successful):
+        """Тест для различных типов пользователей"""
+        self.login(username, password)
 
-        WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "logout_sidebar_link"))
-        )
-        logger.info(f"Вход успешен для пользователя: {problem_user}")
-
-    def test_login_performance_glitch_user(self):
-        """Тест для пользователя с производственными проблемами"""
-        self.login(performance_glitch_user, password_all)
-        WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//span[@class='title']"))
-        )
-        assert self.driver.find_element(By.XPATH, "//span[@class='title']").text == "Products", "Логин не удался"
-        logger.info("Нужная страница открылась")
-        menu = Menu(self.driver)
-        menu.btn_menu()
-        logger.info("Мы нажали на меню")
-        WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((By.ID, "logout_sidebar_link"))
-        )
-        logger.info(f"Вход успешен для пользователя: {performance_glitch_user}")
+        if is_successful:
+            self.verify_successful_login()
+        else:
+            self.verify_error_message("Epic sadface: Sorry, this user has been locked out.")
